@@ -5,7 +5,9 @@ function App() {
   const [rollNumber, setRollNumber] = useState('');
   const [messages, setMessages] = useState([]);
   const [student, setStudent] = useState(null);
+  const [messageId, setMessageId] = useState(0);
   const inputRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   useEffect(() => {
     inputRef.current.focus();
@@ -17,31 +19,37 @@ function App() {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    sendMessage(`Roll Number: ${rollNumber}`);
+    const userMessage = { id: messageId, text: `Roll Number: ${rollNumber}`, sender: 'user' };
+    sendMessage(userMessage);
     fetchStudentData();
     setRollNumber('');
+    setMessageId(messageId + 1);
+    scrollChatToBottom();
   };
 
-  const sendMessage = (text) => {
-    setMessages([...messages, { text, type: 'user' }]);
+  const sendMessage = (message) => {
+    setMessages([...messages, message]);
   };
 
   const receiveMessage = (text) => {
-    setMessages([...messages, { text, type: 'bot' }]);
+    const botMessage = { id: messageId, text, sender: 'bot' };
+    setMessages([...messages, botMessage]);
+    setMessageId(messageId + 1);
+    scrollChatToBottom();
   };
 
   const fetchStudentData = () => {
     fetch(`data.json`)
       .then((response) => response.json())
       .then((data) => {
-        const studentData = data[rollNumber];
+        const studentData = data.find((student) => student['roll no'] === parseInt(rollNumber));
         setStudent(studentData);
         if (studentData) {
           receiveMessage(
-            `Name: ${studentData.name}, Age: ${studentData.age}, Grade: ${studentData.grade}`
+            `Name: ${studentData.Name}, University ID: ${studentData['university id']}`
           );
         } else {
-          receiveMessage('Hello PLease Enter a Valid Roll No');
+          receiveMessage('Invalid Roll Number. Please enter a valid Roll Number');
         }
       })
       .catch(() => {
@@ -49,12 +57,16 @@ function App() {
       });
   };
 
+  const scrollChatToBottom = () => {
+    chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+  };
+
   return (
     <div className="App">
       <div className='bot-head'><img id="bot-img" src={require('./cute-sheep-cartoon-icon-illustration-concept-idul-adha-vector.jpg')} /><h3>Roll No bot here</h3></div>
-      <div className="chat-container">
-        {messages.map((message, index) => (
-          <div key={index} className={`message ${message.type}`}>
+      <div ref={chatContainerRef} className="chat-container">
+        {messages.map((message) => (
+          <div key={message.id} className={`message ${message.sender}`}>
             {message.text}
           </div>
         ))}
@@ -64,7 +76,7 @@ function App() {
           type="text"
           value={rollNumber}
           onChange={handleChange}
-          placeholder="Enter Student Key to get the data"
+          placeholder="Enter Student Roll Number"
           className="chat-input"
           ref={inputRef}
         />
